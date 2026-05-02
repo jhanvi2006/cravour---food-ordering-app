@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useAuth } from '@/features/auth/hooks/useAuth'
 import { profileService } from '@/features/profile/services/profileService'
+import { goalService } from '@/features/profile/services/goalService'
 import { useToast } from '@/shared/components/Toast'
 import './ProfilePage.css'
 
@@ -18,6 +19,12 @@ export default function ProfilePage() {
   const [newAddr, setNewAddr] = useState({ label: '', address_line: '', city: '', pincode: '' })
   const [showAddrForm, setShowAddrForm] = useState(false)
 
+  // Goals
+  const [goals, setGoals] = useState([])
+  const [loadingGoals, setLoadingGoals] = useState(true)
+  const [showGoalForm, setShowGoalForm] = useState(false)
+  const [newGoal, setNewGoal] = useState({ goal_type: 'calorie_limit', target_value: 2000, period: 'daily' })
+
   useEffect(() => {
     if (profile) {
       setFullName(profile.full_name || '')
@@ -33,6 +40,13 @@ export default function ProfilePage() {
       setLoadingAddr(false)
     }
     loadAddresses()
+
+    async function loadGoals() {
+      const { data } = await goalService.getUserGoals(user.id)
+      setGoals(data || [])
+      setLoadingGoals(false)
+    }
+    loadGoals()
   }, [user])
 
   const handleSaveProfile = async (e) => {
@@ -76,6 +90,33 @@ export default function ProfilePage() {
     if (!error) {
       setAddresses((prev) => prev.filter((a) => a.id !== id))
       toast.success('Address removed.')
+    }
+  }
+
+  const handleAddGoal = async (e) => {
+    e.preventDefault()
+    if (!newGoal.target_value) return
+
+    const { data, error } = await goalService.upsertGoal(user.id, newGoal)
+    if (!error && data) {
+      setGoals((prev) => {
+        const existing = prev.find(g => g.id === data.id)
+        if (existing) return prev.map(g => g.id === data.id ? data : g)
+        return [...prev, data]
+      })
+      setShowGoalForm(false)
+      toast.success('Goal saved!')
+    } else {
+      toast.error('Failed to save goal.')
+    }
+  }
+
+  const handleDeleteGoal = async (id) => {
+    if (!window.confirm('Delete this goal?')) return
+    const { error } = await goalService.deleteGoal(id)
+    if (!error) {
+      setGoals((prev) => prev.filter((g) => g.id !== id))
+      toast.success('Goal removed.')
     }
   }
 
@@ -216,6 +257,85 @@ export default function ProfilePage() {
                   className="profile__addr-delete"
                   onClick={() => handleDeleteAddress(addr.id)}
                   title="Delete address"
+                >
+                  ✕
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* Nutrition Goals */}
+      <div className="profile__section">
+        <div className="profile__section-header">
+          <h2 className="profile__section-title">Nutrition Goals</h2>
+          <button
+            className="profile__add-addr-btn"
+            onClick={() => setShowGoalForm(!showGoalForm)}
+          >
+            {showGoalForm ? 'Cancel' : '+ Add Goal'}
+          </button>
+        </div>
+
+        {showGoalForm && (
+          <form className="profile__addr-form" onSubmit={handleAddGoal}>
+            <div className="profile__field-row">
+              <div className="profile__field">
+                <label>Goal Type</label>
+                <select 
+                  value={newGoal.goal_type} 
+                  onChange={(e) => setNewGoal({...newGoal, goal_type: e.target.value})}
+                  className="profile__select"
+                >
+                  <option value="calorie_limit">Max Calories</option>
+                  <option value="protein_target">Min Protein (g)</option>
+                  <option value="carbs_limit">Max Carbs (g)</option>
+                  <option value="fat_limit">Max Fat (g)</option>
+                </select>
+              </div>
+              <div className="profile__field">
+                <label>Target Value</label>
+                <input
+                  type="number"
+                  value={newGoal.target_value}
+                  onChange={(e) => setNewGoal({ ...newGoal, target_value: Number(e.target.value) })}
+                  required
+                />
+              </div>
+            </div>
+            <div className="profile__field">
+              <label>Period</label>
+              <select 
+                value={newGoal.period} 
+                onChange={(e) => setNewGoal({...newGoal, period: e.target.value})}
+                className="profile__select"
+              >
+                <option value="daily">Daily</option>
+                <option value="weekly">Weekly</option>
+                <option value="monthly">Monthly</option>
+              </select>
+            </div>
+            <button type="submit" className="profile__save-btn">Save Goal</button>
+          </form>
+        )}
+
+        {loadingGoals ? (
+          <div className="profile__loading"><div className="profile__spinner" /></div>
+        ) : goals.length === 0 ? (
+          <p className="profile__empty">No goals set yet. Set a calorie or macro goal to start conscious eating!</p>
+        ) : (
+          <div className="profile__addr-list">
+            {goals.map((goal) => (
+              <div key={goal.id} className="profile__addr-card">
+                <div className="profile__addr-info">
+                  <span className="profile__addr-label">{goal.goal_type.replace('_', ' ').toUpperCase()}</span>
+                  <p className="profile__addr-line">{goal.target_value} {goal.goal_type.includes('calorie') ? 'kcal' : 'g'} / {goal.period}</p>
+                </div>
+                <button
+                  className="profile__addr-delete"
+                  onClick={() => handleDeleteGoal(goal.id)}
+                  title="Delete goal"
                 >
                   ✕
                 </button>

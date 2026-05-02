@@ -95,7 +95,8 @@
 }
 
 .profile__field input,
-.profile__field textarea {
+.profile__field textarea,
+.profile__select {
   width: 100%;
   padding: 0.65rem 0.85rem;
   background: var(--color-bg);
@@ -104,15 +105,18 @@
   color: var(--color-text);
   font-size: 0.95rem;
   transition: border-color 0.2s;
+  appearance: none;
 }
 
 .profile__field input:focus,
-.profile__field textarea:focus {
+.profile__field textarea:focus,
+.profile__select:focus {
   outline: none;
   border-color: var(--color-primary);
 }
 
-.profile__field input:disabled {
+.profile__field input:disabled,
+.profile__select:disabled {
   opacity: 0.5;
   cursor: not-allowed;
 }

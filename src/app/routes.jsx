@@ -19,6 +19,7 @@ import OrdersPage from '@/features/orders/pages/OrdersPage'
 import CheckoutPage from '@/features/orders/pages/CheckoutPage'
 import DashboardPage from '@/features/dashboard/pages/DashboardPage'
 import ProfilePage from '@/features/profile/pages/ProfilePage'
+import OwnerDashboardPage from '@/features/owner/pages/OwnerDashboardPage'
 import NotFoundPage from '@/shared/components/NotFoundPage'
 
 export default function AppRoutes() {
@@ -33,10 +34,13 @@ export default function AppRoutes() {
         <Route path="/cart" element={<CartPage />} />
 
         {/* Protected routes (require login) */}
-        <Route path="/dashboard" element={<ProtectedRoute><DashboardPage /></ProtectedRoute>} />
-        <Route path="/checkout" element={<ProtectedRoute><CheckoutPage /></ProtectedRoute>} />
-        <Route path="/orders" element={<ProtectedRoute><OrdersPage /></ProtectedRoute>} />
+        <Route path="/dashboard" element={<ProtectedRoute allowedRoles={['customer']}><DashboardPage /></ProtectedRoute>} />
+        <Route path="/checkout" element={<ProtectedRoute allowedRoles={['customer']}><CheckoutPage /></ProtectedRoute>} />
+        <Route path="/orders" element={<ProtectedRoute allowedRoles={['customer']}><OrdersPage /></ProtectedRoute>} />
         <Route path="/profile" element={<ProtectedRoute><ProfilePage /></ProtectedRoute>} />
+
+        {/* Owner routes */}
+        <Route path="/owner/dashboard" element={<ProtectedRoute allowedRoles={['restaurant_owner']}><OwnerDashboardPage /></ProtectedRoute>} />
       </Route>
 
       {/* Auth routes (no main nav) */}

@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import { useAuth } from '@/features/auth/hooks/useAuth'
 import { orderService } from '@/features/orders/services/orderService'
+import { goalService } from '@/features/profile/services/goalService'
 import { formatCurrency, formatDate } from '@/shared/utils/formatters'
 import { ORDER_STATUSES } from '@/shared/utils/constants'
 import './DashboardPage.css'
@@ -9,13 +10,18 @@ import './DashboardPage.css'
 export default function DashboardPage() {
   const { user, displayName } = useAuth()
   const [orders, setOrders] = useState([])
+  const [goals, setGoals] = useState([])
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
     if (!user) return
     async function load() {
-      const { data } = await orderService.getUserOrders(user.id)
-      setOrders(data || [])
+      const { data: orderData } = await orderService.getUserOrders(user.id)
+      setOrders(orderData || [])
+      
+      const { data: goalData } = await goalService.getUserGoals(user.id)
+      setGoals(goalData || [])
+
       setLoading(false)
     }
     load()
@@ -31,10 +37,19 @@ export default function DashboardPage() {
     const d = new Date(o.created_at)
     return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear()
   })
+  
+  const todayStr = now.toDateString()
+  const todayOrders = orders.filter(o => new Date(o.created_at).toDateString() === todayStr)
+
+  const startOfWeek = new Date(now)
+  startOfWeek.setDate(now.getDate() - now.getDay()) 
+  startOfWeek.setHours(0,0,0,0)
+  const weekOrders = orders.filter(o => new Date(o.created_at) >= startOfWeek)
+
   const monthlySpend = thisMonthOrders.reduce((sum, o) => sum + Number(o.total || 0), 0)
 
-  // Calculate this month's nutrition
-  const monthlyNutrition = thisMonthOrders.reduce((acc, order) => {
+  // Calculate nutrition helpers
+  const calcNutrition = (orderList) => orderList.reduce((acc, order) => {
     if (!order.order_items) return acc;
     order.order_items.forEach((item) => {
       const qty = item.quantity || 1;
@@ -46,6 +61,10 @@ export default function DashboardPage() {
     });
     return acc;
   }, { calories: 0, protein: 0, carbs: 0, fat: 0 });
+
+  const monthlyNutrition = calcNutrition(thisMonthOrders);
+  const weeklyNutrition = calcNutrition(weekOrders);
+  const dailyNutrition = calcNutrition(todayOrders);
 
   // Points estimate (1 point per ₹10 spent)
   const points = Math.floor(totalSpent / 10)
@@ -105,29 +124,75 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      {/* Nutrition Passport */}
+      {/* Nutrition Passport & Goals */}
       <div className="dash__section">
         <div className="dash__section-header">
-          <h2 className="dash__section-title">Nutrition Passport (This Month)</h2>
+          <h2 className="dash__section-title">Nutrition Passport</h2>
+          <Link to="/profile" className="dash__section-link">Manage Goals →</Link>
         </div>
-        <div className="dash__nutrition">
-          <div className="dash__nutrition-item">
-            <span className="dash__nutrition-label">Calories</span>
-            <span className="dash__nutrition-value">{Math.round(monthlyNutrition.calories)} kcal</span>
+        
+        {goals.length > 0 ? (
+          <div className="dash__goals">
+            {goals.map(goal => {
+              // Map period to correct consumption
+              let consumption = 0;
+              let unit = goal.goal_type.includes('calorie') ? 'kcal' : 'g';
+              let macroKey = goal.goal_type.split('_')[0]; // 'calorie', 'protein', 'carbs', 'fat'
+              if (macroKey === 'calorie') macroKey = 'calories';
+              
+              if (goal.period === 'daily') consumption = dailyNutrition[macroKey];
+              if (goal.period === 'weekly') consumption = weeklyNutrition[macroKey];
+              if (goal.period === 'monthly') consumption = monthlyNutrition[macroKey];
+
+              let progress = Math.min((consumption / goal.target_value) * 100, 100);
+              let isOver = consumption > goal.target_value;
+              let barColor = goal.goal_type.includes('protein') 
+                ? (progress >= 100 ? 'var(--color-success)' : 'var(--color-primary)') // For protein, higher is better
+                : (isOver ? 'var(--color-error)' : 'var(--color-primary)'); // For calories/fat/carbs, lower is better
+              
+              return (
+                <div key={goal.id} className="dash__goal-card">
+                  <div className="dash__goal-header">
+                    <span className="dash__goal-title">{goal.goal_type.replace('_', ' ').toUpperCase()} ({goal.period})</span>
+                    <span className="dash__goal-values">
+                      <strong style={{ color: isOver ? 'var(--color-error)' : 'inherit' }}>
+                        {Math.round(consumption)}
+                      </strong> / {goal.target_value} {unit}
+                    </span>
+                  </div>
+                  <div className="dash__goal-progress-bar">
+                    <div 
+                      className="dash__goal-progress-fill" 
+                      style={{ width: `${progress}%`, backgroundColor: barColor }}
+                    />
+                  </div>
+                </div>
+              );
+            })}
           </div>
-          <div className="dash__nutrition-item">
-            <span className="dash__nutrition-label">Protein</span>
-            <span className="dash__nutrition-value">{Math.round(monthlyNutrition.protein)}g</span>
+        ) : (
+          <div className="dash__nutrition">
+            <p className="dash__empty" style={{ gridColumn: '1 / -1', paddingBottom: '1rem' }}>
+              No nutrition goals set. Track your monthly intake below or <Link to="/profile" style={{ color: 'var(--color-primary)' }}>set a goal</Link>.
+            </p>
+            <div className="dash__nutrition-item">
+              <span className="dash__nutrition-label">Calories</span>
+              <span className="dash__nutrition-value">{Math.round(monthlyNutrition.calories)} kcal</span>
+            </div>
+            <div className="dash__nutrition-item">
+              <span className="dash__nutrition-label">Protein</span>
+              <span className="dash__nutrition-value">{Math.round(monthlyNutrition.protein)}g</span>
+            </div>
+            <div className="dash__nutrition-item">
+              <span className="dash__nutrition-label">Carbs</span>
+              <span className="dash__nutrition-value">{Math.round(monthlyNutrition.carbs)}g</span>
+            </div>
+            <div className="dash__nutrition-item">
+              <span className="dash__nutrition-label">Fat</span>
+              <span className="dash__nutrition-value">{Math.round(monthlyNutrition.fat)}g</span>
+            </div>
           </div>
-          <div className="dash__nutrition-item">
-            <span className="dash__nutrition-label">Carbs</span>
-            <span className="dash__nutrition-value">{Math.round(monthlyNutrition.carbs)}g</span>
-          </div>
-          <div className="dash__nutrition-item">
-            <span className="dash__nutrition-label">Fat</span>
-            <span className="dash__nutrition-value">{Math.round(monthlyNutrition.fat)}g</span>
-          </div>
-        </div>
+        )}
       </div>
 
       {/* Recent Orders */}
