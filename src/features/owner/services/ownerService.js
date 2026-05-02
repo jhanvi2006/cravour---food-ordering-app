@@ -9,6 +9,21 @@ export const ownerService = {
       .from('restaurants')
       .select('*')
       .eq('owner_id', ownerId)
+      .maybeSingle()
+  },
+
+  /**
+   * Create a new restaurant
+   */
+  createRestaurant: async (ownerId, data) => {
+    return supabase
+      .from('restaurants')
+      .insert({
+        owner_id: ownerId,
+        ...data,
+        is_active: false // Admin must approve
+      })
+      .select()
       .single()
   },
 

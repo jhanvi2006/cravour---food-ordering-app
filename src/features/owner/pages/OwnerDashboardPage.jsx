@@ -55,13 +55,72 @@ export default function OwnerDashboardPage() {
     )
   }
 
+  const [setupData, setSetupData] = useState({ name: '', description: '', cuisine: '', city: '' })
+  const [setupLoading, setSetupLoading] = useState(false)
+
+  const handleCreateRestaurant = async (e) => {
+    e.preventDefault()
+    setSetupLoading(true)
+    const { data, error } = await ownerService.createRestaurant(user.id, setupData)
+    setSetupLoading(false)
+    if (error) {
+      toast.error(error.message)
+    } else {
+      setRestaurant(data)
+      toast.success('Restaurant created! Awaiting admin approval.')
+    }
+  }
+
   if (!restaurant) {
     return (
       <div className="owner-dash">
-        <div className="owner-dash__welcome">
-          <h1>Welcome, <span className="owner-dash__accent">{displayName}</span></h1>
-          <p>It looks like you don't have a restaurant assigned yet. Please contact admin.</p>
+        <div className="owner-dash__welcome" style={{ marginBottom: '2rem' }}>
+          <h1 className="owner-dash__greeting">Welcome, <span className="owner-dash__accent">{displayName}</span></h1>
+          <p className="owner-dash__sub">Let's set up your new restaurant before you start selling.</p>
         </div>
+        
+        <form onSubmit={handleCreateRestaurant} style={{ background: 'var(--color-surface)', padding: '2rem', borderRadius: '16px', border: '1px solid var(--color-border)', maxWidth: '600px' }}>
+          <div style={{ marginBottom: '1rem' }}>
+            <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 600 }}>Restaurant Name</label>
+            <input 
+              required 
+              style={{ width: '100%', padding: '0.75rem', borderRadius: '8px', border: '1px solid var(--color-border)', background: 'var(--color-bg)' }}
+              value={setupData.name} onChange={e => setSetupData({...setupData, name: e.target.value})} 
+            />
+          </div>
+          <div style={{ marginBottom: '1rem' }}>
+            <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 600 }}>Cuisine (e.g., Italian, Indian)</label>
+            <input 
+              required 
+              style={{ width: '100%', padding: '0.75rem', borderRadius: '8px', border: '1px solid var(--color-border)', background: 'var(--color-bg)' }}
+              value={setupData.cuisine} onChange={e => setSetupData({...setupData, cuisine: e.target.value})} 
+            />
+          </div>
+          <div style={{ marginBottom: '1rem' }}>
+            <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 600 }}>City</label>
+            <input 
+              required 
+              style={{ width: '100%', padding: '0.75rem', borderRadius: '8px', border: '1px solid var(--color-border)', background: 'var(--color-bg)' }}
+              value={setupData.city} onChange={e => setSetupData({...setupData, city: e.target.value})} 
+            />
+          </div>
+          <div style={{ marginBottom: '1.5rem' }}>
+            <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 600 }}>Short Description</label>
+            <textarea 
+              required 
+              rows={3}
+              style={{ width: '100%', padding: '0.75rem', borderRadius: '8px', border: '1px solid var(--color-border)', background: 'var(--color-bg)' }}
+              value={setupData.description} onChange={e => setSetupData({...setupData, description: e.target.value})} 
+            />
+          </div>
+          <button 
+            type="submit" 
+            disabled={setupLoading}
+            style={{ background: 'var(--color-primary)', color: 'white', padding: '0.75rem 1.5rem', borderRadius: '8px', border: 'none', fontWeight: 'bold', cursor: 'pointer', width: '100%' }}
+          >
+            {setupLoading ? 'Creating...' : 'Create Restaurant'}
+          </button>
+        </form>
       </div>
     )
   }

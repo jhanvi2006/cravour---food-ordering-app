@@ -5,7 +5,7 @@ import { useCart } from '@/features/cart/hooks/useCart'
 import './Navbar.css'
 
 export default function Navbar() {
-  const { user, displayName, signOut } = useAuth()
+  const { user, displayName, role, signOut } = useAuth()
   const { items } = useCart()
   const navigate = useNavigate()
   const [dropdownOpen, setDropdownOpen] = useState(false)
@@ -73,12 +73,27 @@ export default function Navbar() {
                     <span className="navbar-dropdown-email">{user.email}</span>
                   </div>
                   <div className="navbar-dropdown-divider" />
-                  <Link to="/dashboard" className="navbar-dropdown-item" onClick={() => setDropdownOpen(false)}>
-                    📊 Dashboard
-                  </Link>
-                  <Link to="/orders" className="navbar-dropdown-item" onClick={() => setDropdownOpen(false)}>
-                    📦 My Orders
-                  </Link>
+                  
+                  {role === 'admin' ? (
+                    <Link to="/admin/dashboard" className="navbar-dropdown-item" onClick={() => setDropdownOpen(false)}>
+                      👑 Admin Dashboard
+                    </Link>
+                  ) : role === 'restaurant_owner' ? (
+                    <Link to="/owner/dashboard" className="navbar-dropdown-item" onClick={() => setDropdownOpen(false)}>
+                      🏪 Owner Dashboard
+                    </Link>
+                  ) : (
+                    <Link to="/dashboard" className="navbar-dropdown-item" onClick={() => setDropdownOpen(false)}>
+                      📊 Dashboard
+                    </Link>
+                  )}
+
+                  {role === 'customer' && (
+                    <Link to="/orders" className="navbar-dropdown-item" onClick={() => setDropdownOpen(false)}>
+                      📦 My Orders
+                    </Link>
+                  )}
+
                   <Link to="/profile" className="navbar-dropdown-item" onClick={() => setDropdownOpen(false)}>
                     👤 Profile
                   </Link>
