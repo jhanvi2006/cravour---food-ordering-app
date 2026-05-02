@@ -20,6 +20,7 @@ import CheckoutPage from '@/features/orders/pages/CheckoutPage'
 import DashboardPage from '@/features/dashboard/pages/DashboardPage'
 import ProfilePage from '@/features/profile/pages/ProfilePage'
 import OwnerDashboardPage from '@/features/owner/pages/OwnerDashboardPage'
+import AdminDashboardPage from '@/features/admin/pages/AdminDashboardPage'
 import NotFoundPage from '@/shared/components/NotFoundPage'
 
 export default function AppRoutes() {
@@ -41,6 +42,9 @@ export default function AppRoutes() {
 
         {/* Owner routes */}
         <Route path="/owner/dashboard" element={<ProtectedRoute allowedRoles={['restaurant_owner']}><OwnerDashboardPage /></ProtectedRoute>} />
+
+        {/* Admin routes */}
+        <Route path="/admin/dashboard" element={<ProtectedRoute allowedRoles={['admin']}><AdminDashboardPage /></ProtectedRoute>} />
       </Route>
 
       {/* Auth routes (no main nav) */}

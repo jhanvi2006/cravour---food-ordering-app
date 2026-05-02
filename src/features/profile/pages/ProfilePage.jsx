@@ -54,12 +54,12 @@ export default function ProfilePage() {
     if (!fullName.trim()) return
     setSaving(true)
     const { error } = await profileService.update(user.id, {
-      full_name: fullName.trim(),
-      phone: phone.trim() || null,
+      full_name: fullName.trim()
     })
     setSaving(false)
     if (error) {
-      toast.error('Failed to update profile.')
+      console.error("Profile update error:", error)
+      toast.error(`Profile Error: ${error.message}`)
     } else {
       toast.success('Profile updated!')
       refreshProfile()
@@ -80,14 +80,17 @@ export default function ProfilePage() {
       setShowAddrForm(false)
       toast.success('Address added!')
     } else {
-      toast.error('Failed to add address.')
+      console.error("Address add error:", error)
+      toast.error(`Address Error: ${error.message}`)
     }
   }
 
   const handleDeleteAddress = async (id) => {
     if (!window.confirm('Delete this address?')) return
     const { error } = await profileService.deleteAddress(id)
-    if (!error) {
+    if (error) {
+      toast.error(`Delete Error: ${error.message}`)
+    } else {
       setAddresses((prev) => prev.filter((a) => a.id !== id))
       toast.success('Address removed.')
     }
@@ -107,14 +110,17 @@ export default function ProfilePage() {
       setShowGoalForm(false)
       toast.success('Goal saved!')
     } else {
-      toast.error('Failed to save goal.')
+      console.error("Goal save error:", error)
+      toast.error(`Goal Error: ${error.message}`)
     }
   }
 
   const handleDeleteGoal = async (id) => {
     if (!window.confirm('Delete this goal?')) return
     const { error } = await goalService.deleteGoal(id)
-    if (!error) {
+    if (error) {
+      toast.error(`Delete Goal Error: ${error.message}`)
+    } else {
       setGoals((prev) => prev.filter((g) => g.id !== id))
       toast.success('Goal removed.')
     }
@@ -164,17 +170,6 @@ export default function ProfilePage() {
         <div className="profile__field">
           <label htmlFor="profile-email">Email</label>
           <input id="profile-email" type="email" value={user.email} disabled />
-        </div>
-
-        <div className="profile__field">
-          <label htmlFor="profile-phone">Phone (optional)</label>
-          <input
-            id="profile-phone"
-            type="tel"
-            value={phone}
-            onChange={(e) => setPhone(e.target.value)}
-            placeholder="+91 9876543210"
-          />
         </div>
 
         <button type="submit" className="profile__save-btn" disabled={saving}>

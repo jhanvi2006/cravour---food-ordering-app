@@ -18,7 +18,7 @@ export const profileService = {
   update: async (userId, updates) => {
     return supabase
       .from('profiles')
-      .update({ ...updates, updated_at: new Date().toISOString() })
+      .update(updates)
       .eq('id', userId)
       .select()
       .single()

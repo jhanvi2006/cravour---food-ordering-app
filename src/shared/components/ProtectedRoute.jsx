@@ -23,7 +23,7 @@ export default function ProtectedRoute({ children, allowedRoles }) {
   }
 
   if (allowedRoles && !allowedRoles.includes(role)) {
-    // If user is a restaurant owner but trying to access customer dashboard, redirect them
+    if (role === 'admin') return <Navigate to="/admin/dashboard" replace />
     if (role === 'restaurant_owner') return <Navigate to="/owner/dashboard" replace />
     // Default redirect to customer dashboard
     return <Navigate to="/dashboard" replace />
