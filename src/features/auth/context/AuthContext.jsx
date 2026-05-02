@@ -43,12 +43,23 @@ export function AuthProvider({ children }) {
     return () => subscription.unsubscribe()
   }, [])
 
-  const signUp = async ({ email, password, fullName }) => {
+  const signUp = async ({ email, password, fullName, role = 'customer' }) => {
     const { data, error } = await supabase.auth.signUp({
       email,
       password,
-      options: { data: { full_name: fullName } },
+      options: { data: { full_name: fullName, role: role } },
     })
+    
+    // Explicitly create the profile if signup succeeded
+    if (data?.user && !error) {
+      await supabase.from('profiles').upsert({
+        id: data.user.id,
+        full_name: fullName,
+        role: role
+      })
+      await fetchProfile(data.user.id)
+    }
+
     return { data, error }
   }
 

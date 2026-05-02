@@ -6,6 +6,7 @@ export default function RegisterPage() {
   const [fullName, setFullName] = useState('')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
+  const [role, setRole] = useState('customer')
   const [error, setError] = useState(null)
   const [loading, setLoading] = useState(false)
   const { signUp } = useAuth()
@@ -16,7 +17,7 @@ export default function RegisterPage() {
     setError(null)
     setLoading(true)
 
-    const { error } = await signUp({ email, password, fullName })
+    const { error } = await signUp({ email, password, fullName, role })
     setLoading(false)
 
     if (error) {
@@ -78,6 +79,14 @@ export default function RegisterPage() {
           minLength={6}
           style={inputStyle}
         />
+        <select 
+          value={role} 
+          onChange={(e) => setRole(e.target.value)}
+          style={{ ...inputStyle, cursor: 'pointer', appearance: 'auto' }}
+        >
+          <option value="customer">I want to order food (Customer)</option>
+          <option value="restaurant_owner">I want to sell food (Restaurant)</option>
+        </select>
         <button
           id="register-submit"
           type="submit"

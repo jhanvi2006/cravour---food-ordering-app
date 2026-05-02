@@ -40,7 +40,11 @@ export default function AdminDashboardPage() {
     if (error) {
       toast.error('Failed to update restaurant status')
     } else {
-      toast.success(`Restaurant ${newStatus ? 'approved' : 'disabled'}`)
+      if (newStatus) {
+        toast.success('Restaurant approved! Approval email sent to owner. 📧')
+      } else {
+        toast.success('Restaurant disabled')
+      }
       setRestaurants(prev => prev.map(r => r.id === id ? { ...r, is_active: newStatus } : r))
     }
   }
