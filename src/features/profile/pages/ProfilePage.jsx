@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { useAuth } from '@/features/auth/hooks/useAuth'
 import { profileService } from '@/features/profile/services/profileService'
 import { goalService } from '@/features/profile/services/goalService'
@@ -6,8 +7,9 @@ import { useToast } from '@/shared/components/Toast'
 import './ProfilePage.css'
 
 export default function ProfilePage() {
-  const { user, profile, displayName, refreshProfile } = useAuth()
+  const { user, profile, displayName, refreshProfile, signOut } = useAuth()
   const toast = useToast()
+  const navigate = useNavigate()
 
   const [fullName, setFullName] = useState('')
   const [phone, setPhone] = useState('')
@@ -123,6 +125,25 @@ export default function ProfilePage() {
     } else {
       setGoals((prev) => prev.filter((g) => g.id !== id))
       toast.success('Goal removed.')
+    }
+  }
+
+  const handleDeleteAccount = async () => {
+    const confirm1 = window.confirm('Are you absolutely sure you want to delete your account? This action cannot be undone.')
+    if (!confirm1) return
+    const confirm2 = window.prompt('Type DELETE to confirm account deletion:')
+    if (confirm2 !== 'DELETE') return
+    
+    setSaving(true)
+    const { error } = await profileService.deleteAccount()
+    if (error) {
+      setSaving(false)
+      console.error("Delete account error:", error)
+      toast.error(`Error: ${error.message}. Make sure you ran the SQL script!`)
+    } else {
+      toast.success('Account successfully deleted.')
+      await signOut()
+      navigate('/')
     }
   }
 
@@ -338,6 +359,32 @@ export default function ProfilePage() {
             ))}
           </div>
         )}
+      </div>
+
+      {/* Danger Zone */}
+      <div className="profile__section" style={{ borderColor: 'var(--color-error)', marginTop: '2rem' }}>
+        <div className="profile__section-header">
+          <h2 className="profile__section-title" style={{ color: 'var(--color-error)' }}>Danger Zone</h2>
+        </div>
+        <p style={{ fontSize: '0.9rem', color: 'var(--color-text-secondary)', marginBottom: '1rem' }}>
+          Once you delete your account, there is no going back. Please be certain.
+        </p>
+        <button 
+          onClick={handleDeleteAccount}
+          disabled={saving}
+          style={{
+            background: 'var(--color-error)',
+            color: 'white',
+            padding: '0.75rem 1.5rem',
+            borderRadius: 'var(--radius-md)',
+            fontWeight: 'bold',
+            border: 'none',
+            cursor: 'pointer',
+            transition: 'opacity 0.2s'
+          }}
+        >
+          {saving ? 'Deleting...' : 'Delete Account'}
+        </button>
       </div>
     </div>
   )

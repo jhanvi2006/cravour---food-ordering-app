@@ -55,4 +55,11 @@ export const profileService = {
       .delete()
       .eq('id', addressId)
   },
+
+  /**
+   * Delete the entire user account (calls an RPC function)
+   */
+  deleteAccount: async () => {
+    return supabase.rpc('delete_user_account')
+  }
 }
