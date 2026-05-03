@@ -8,13 +8,28 @@ export function AuthProvider({ children }) {
   const [profile, setProfile] = useState(null)
   const [loading, setLoading] = useState(true)
 
-  // Fetch profile from profiles table
-  const fetchProfile = async (userId) => {
+  // Fetch profile from profiles table, create it if missing
+  const fetchProfile = async (userId, userMetadata = null) => {
     const { data } = await supabase
       .from('profiles')
       .select('*')
       .eq('id', userId)
       .single()
+      
+    // Self-healing: If profile is missing (e.g. because of email confirmation locking), create it now!
+    if (!data && userMetadata) {
+      const newProfile = {
+        id: userId,
+        full_name: userMetadata.full_name || 'User',
+        role: userMetadata.role || 'customer'
+      }
+      const { data: insertedData } = await supabase.from('profiles').insert(newProfile).select().single()
+      if (insertedData) {
+        setProfile(insertedData)
+        return
+      }
+    }
+    
     setProfile(data)
   }
 
@@ -23,7 +38,7 @@ export function AuthProvider({ children }) {
     supabase.auth.getSession().then(({ data: { session } }) => {
       const currentUser = session?.user ?? null
       setUser(currentUser)
-      if (currentUser) fetchProfile(currentUser.id)
+      if (currentUser) fetchProfile(currentUser.id, currentUser.user_metadata)
       setLoading(false)
     })
 
@@ -33,7 +48,7 @@ export function AuthProvider({ children }) {
         const currentUser = session?.user ?? null
         setUser(currentUser)
         if (currentUser) {
-          fetchProfile(currentUser.id)
+          fetchProfile(currentUser.id, currentUser.user_metadata)
         } else {
           setProfile(null)
         }
