@@ -28,6 +28,18 @@ export const ownerService = {
   },
 
   /**
+   * Update restaurant details
+   */
+  updateRestaurant: async (id, data) => {
+    return supabase
+      .from('restaurants')
+      .update(data)
+      .eq('id', id)
+      .select()
+      .single()
+  },
+
+  /**
    * Get recent orders for a restaurant
    */
   getRecentOrders: async (restaurantId, limit = 10) => {
@@ -54,6 +66,26 @@ export const ownerService = {
       `)
       .eq('restaurant_id', restaurantId)
       .order('sort_order')
+  },
+
+  /**
+   * Ensure a default category exists and return its ID
+   */
+  ensureCategoryExists: async (restaurantId) => {
+    // Check if any exists
+    const { data: existing } = await supabase.from('menu_categories').select('id').eq('restaurant_id', restaurantId).limit(1)
+    if (existing && existing.length > 0) return existing[0].id
+
+    // Create a default one
+    const { data } = await supabase.from('menu_categories').insert({ restaurant_id: restaurantId, name: 'Menu', sort_order: 1 }).select().single()
+    return data?.id
+  },
+
+  /**
+   * Add a menu item
+   */
+  addMenuItem: async (itemData) => {
+    return supabase.from('menu_items').insert(itemData).select().single()
   },
 
   /**

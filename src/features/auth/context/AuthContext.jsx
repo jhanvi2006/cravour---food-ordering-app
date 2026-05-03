@@ -52,11 +52,14 @@ export function AuthProvider({ children }) {
     
     // Explicitly create the profile if signup succeeded
     if (data?.user && !error) {
-      await supabase.from('profiles').upsert({
+      const { error: profileError } = await supabase.from('profiles').upsert({
         id: data.user.id,
         full_name: fullName,
         role: role
       })
+      if (profileError) {
+        console.error("Critical: Failed to create profile row!", profileError)
+      }
       await fetchProfile(data.user.id)
     }
 

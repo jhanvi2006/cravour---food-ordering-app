@@ -14,6 +14,16 @@ export default function OwnerDashboardPage() {
   const [restaurant, setRestaurant] = useState(null)
   const [orders, setOrders] = useState([])
   const [loading, setLoading] = useState(true)
+  const [activeTab, setActiveTab] = useState('orders') // 'orders', 'menu', 'settings'
+
+  // Settings State
+  const [settingsData, setSettingsData] = useState({})
+  const [settingsLoading, setSettingsLoading] = useState(false)
+
+  // Menu State
+  const [menuItems, setMenuItems] = useState([])
+  const [newItem, setNewItem] = useState({ name: '', description: '', price: '', image_url: '', is_veg: true })
+  const [menuLoading, setMenuLoading] = useState(false)
 
   useEffect(() => {
     if (!user) return
@@ -25,8 +35,19 @@ export default function OwnerDashboardPage() {
         setRestaurant(restData)
         
         if (restData) {
+          setSettingsData({
+            name: restData.name || '',
+            description: restData.description || '',
+            cuisine_type: restData.cuisine_type || '',
+            city: restData.city || '',
+            image_url: restData.image_url || ''
+          })
           const { data: ordersData } = await ownerService.getRecentOrders(restData.id)
           setOrders(ordersData || [])
+          
+          const { data: menuData } = await ownerService.getMenu(restData.id)
+          const allItems = menuData?.flatMap(c => c.menu_items) || []
+          setMenuItems(allItems)
         }
       } catch (err) {
         console.error("Failed to load owner data:", err)
@@ -125,6 +146,39 @@ export default function OwnerDashboardPage() {
     )
   }
 
+  const handleUpdateSettings = async (e) => {
+    e.preventDefault()
+    setSettingsLoading(true)
+    const { data, error } = await ownerService.updateRestaurant(restaurant.id, settingsData)
+    setSettingsLoading(false)
+    if (error) {
+      toast.error('Failed to update settings')
+    } else {
+      setRestaurant(data)
+      toast.success('Restaurant settings updated!')
+    }
+  }
+
+  const handleAddMenuItem = async (e) => {
+    e.preventDefault()
+    setMenuLoading(true)
+    const categoryId = await ownerService.ensureCategoryExists(restaurant.id)
+    const { data, error } = await ownerService.addMenuItem({
+      category_id: categoryId,
+      ...newItem,
+      price: Number(newItem.price),
+      is_available: true
+    })
+    setMenuLoading(false)
+    if (error) {
+      toast.error('Failed to add menu item')
+    } else {
+      setMenuItems(prev => [...prev, data])
+      setNewItem({ name: '', description: '', price: '', image_url: '', is_veg: true })
+      toast.success('Menu item added successfully!')
+    }
+  }
+
   // Calculate today's revenue
   const today = new Date().toDateString()
   const todayOrders = orders.filter(o => new Date(o.created_at).toDateString() === today)
@@ -132,12 +186,26 @@ export default function OwnerDashboardPage() {
 
   return (
     <div className="owner-dash">
+      {!restaurant.is_active && (
+        <div style={{ background: 'rgba(239, 68, 68, 0.1)', color: 'var(--color-error)', padding: '1rem', borderRadius: '8px', marginBottom: '2rem', border: '1px solid var(--color-error)' }}>
+          <strong>Awaiting Approval:</strong> Your restaurant is currently hidden from customers. An admin must approve it before you can receive orders. You can still set up your Menu and Settings.
+        </div>
+      )}
+
       <div className="owner-dash__welcome">
         <h1 className="owner-dash__greeting">Dashboard: <span className="owner-dash__accent">{restaurant.name}</span></h1>
-        <p className="owner-dash__sub">Manage your restaurant and incoming orders.</p>
+        <p className="owner-dash__sub">Manage your restaurant, menu, and incoming orders.</p>
       </div>
 
-      <div className="owner-dash__stats">
+      <div className="owner-dash__tabs">
+        <button className={`owner-dash__tab ${activeTab === 'orders' ? 'active' : ''}`} onClick={() => setActiveTab('orders')}>Orders</button>
+        <button className={`owner-dash__tab ${activeTab === 'menu' ? 'active' : ''}`} onClick={() => setActiveTab('menu')}>Menu Management</button>
+        <button className={`owner-dash__tab ${activeTab === 'settings' ? 'active' : ''}`} onClick={() => setActiveTab('settings')}>Settings</button>
+      </div>
+
+      {activeTab === 'orders' && (
+        <>
+          <div className="owner-dash__stats">
         <div className="owner-dash__stat-card">
           <span className="owner-dash__stat-icon">📦</span>
           <div>
@@ -198,6 +266,97 @@ export default function OwnerDashboardPage() {
           </div>
         )}
       </div>
+    </>
+  )}
+
+      {activeTab === 'menu' && (
+        <div className="owner-dash__section">
+          <h2 className="owner-dash__section-title">Add Menu Item</h2>
+          <form onSubmit={handleAddMenuItem} style={{ display: 'grid', gap: '1rem', maxWidth: '600px', marginBottom: '3rem' }}>
+            <div>
+              <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 600 }}>Item Name</label>
+              <input required style={inputStyle} value={newItem.name} onChange={e => setNewItem({...newItem, name: e.target.value})} placeholder="E.g., Margherita Pizza" />
+            </div>
+            <div>
+              <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 600 }}>Description</label>
+              <textarea required rows={2} style={inputStyle} value={newItem.description} onChange={e => setNewItem({...newItem, description: e.target.value})} placeholder="Classic delight with 100% real mozzarella cheese" />
+            </div>
+            <div style={{ display: 'flex', gap: '1rem' }}>
+              <div style={{ flex: 1 }}>
+                <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 600 }}>Price (₹)</label>
+                <input required type="number" min="0" style={inputStyle} value={newItem.price} onChange={e => setNewItem({...newItem, price: e.target.value})} placeholder="299" />
+              </div>
+              <div style={{ flex: 1 }}>
+                <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 600 }}>Dietary Type</label>
+                <select style={inputStyle} value={newItem.is_veg} onChange={e => setNewItem({...newItem, is_veg: e.target.value === 'true'})}>
+                  <option value="true">🟢 Veg</option>
+                  <option value="false">🔴 Non-Veg</option>
+                </select>
+              </div>
+            </div>
+            <div>
+              <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 600 }}>Image URL (Optional)</label>
+              <input style={inputStyle} value={newItem.image_url} onChange={e => setNewItem({...newItem, image_url: e.target.value})} placeholder="https://example.com/pizza.jpg" />
+            </div>
+            <button type="submit" disabled={menuLoading} style={btnStyle}>
+              {menuLoading ? 'Adding...' : 'Add Item'}
+            </button>
+          </form>
+
+          <h2 className="owner-dash__section-title">Your Menu Items ({menuItems.length})</h2>
+          <div style={{ display: 'grid', gap: '1rem' }}>
+            {menuItems.map(item => (
+              <div key={item.id} style={{ display: 'flex', justifyContent: 'space-between', padding: '1rem', background: 'var(--color-surface)', borderRadius: '8px', border: '1px solid var(--color-border)' }}>
+                <div>
+                  <h4 style={{ fontWeight: 600, marginBottom: '0.25rem' }}>
+                    {item.is_veg ? '🟢' : '🔴'} {item.name}
+                  </h4>
+                  <p style={{ fontSize: '0.9rem', color: 'var(--color-text-muted)' }}>{item.description}</p>
+                </div>
+                <div style={{ fontWeight: 600 }}>{formatCurrency(item.price)}</div>
+              </div>
+            ))}
+            {menuItems.length === 0 && <p style={{ color: 'var(--color-text-muted)' }}>No items yet. Add one above!</p>}
+          </div>
+        </div>
+      )}
+
+      {activeTab === 'settings' && (
+        <div className="owner-dash__section">
+          <h2 className="owner-dash__section-title">Restaurant Settings</h2>
+          <form onSubmit={handleUpdateSettings} style={{ display: 'grid', gap: '1rem', maxWidth: '600px' }}>
+            <div>
+              <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 600 }}>Restaurant Name</label>
+              <input required style={inputStyle} value={settingsData.name} onChange={e => setSettingsData({...settingsData, name: e.target.value})} />
+            </div>
+            <div>
+              <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 600 }}>Banner Image URL</label>
+              <input style={inputStyle} value={settingsData.image_url} onChange={e => setSettingsData({...settingsData, image_url: e.target.value})} placeholder="https://example.com/banner.jpg" />
+              {settingsData.image_url && (
+                <img src={settingsData.image_url} alt="Banner Preview" style={{ width: '100%', height: '150px', objectFit: 'cover', borderRadius: '8px', marginTop: '0.5rem' }} />
+              )}
+            </div>
+            <div>
+              <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 600 }}>Cuisine Type</label>
+              <input required style={inputStyle} value={settingsData.cuisine_type} onChange={e => setSettingsData({...settingsData, cuisine_type: e.target.value})} />
+            </div>
+            <div>
+              <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 600 }}>City</label>
+              <input required style={inputStyle} value={settingsData.city} onChange={e => setSettingsData({...settingsData, city: e.target.value})} />
+            </div>
+            <div>
+              <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 600 }}>Description</label>
+              <textarea required rows={4} style={inputStyle} value={settingsData.description} onChange={e => setSettingsData({...settingsData, description: e.target.value})} />
+            </div>
+            <button type="submit" disabled={settingsLoading} style={btnStyle}>
+              {settingsLoading ? 'Saving...' : 'Save Changes'}
+            </button>
+          </form>
+        </div>
+      )}
     </div>
   )
 }
+
+const inputStyle = { width: '100%', padding: '0.75rem', borderRadius: '8px', border: '1px solid var(--color-border)', background: 'var(--color-bg)', color: 'var(--color-text)' }
+const btnStyle = { background: 'var(--color-primary)', color: 'white', padding: '0.75rem 1.5rem', borderRadius: '8px', border: 'none', fontWeight: 'bold', cursor: 'pointer' }

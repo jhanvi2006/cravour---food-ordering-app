@@ -47,6 +47,7 @@ export const restaurantService = {
         restaurant:restaurants!inner(name, slug)
       `)
       .eq('is_available', true)
+      .eq('restaurant.is_active', true)
       
     if (maxPrice) {
       query = query.lte('price', maxPrice)
